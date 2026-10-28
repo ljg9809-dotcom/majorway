@@ -1,8 +1,12 @@
 # Majorway · 전공에서 시작하는 부산 채용 탐색
 
-Node.js 22 이상에서 별도 패키지 설치 없이 실행합니다. 로컬 전용이며 외부 배포는 하지 않았습니다.
+Node.js 22 이상에서 별도 패키지 설치 없이 실행합니다. 로컬 실행과 Vercel 배포를 지원합니다.
 
-GitHub 저장소에 코드를 푸시하는 것과 서비스를 인터넷에 배포하는 것은 별개입니다. GitHub Pages는 Node 서버와 `/api/*` 중계 기능을 실행하지 않으므로 이 프로젝트 전체를 서비스할 수 없습니다. 저장소 루트에는 `index.html`이 없어 Pages가 이 README를 첫 화면으로 표시할 수 있습니다. `public/index.html`만 올려도 API 기능은 동작하지 않습니다. 실제 공개 운영에는 Node 서버를 실행할 수 있는 호스팅과 서버 측 환경 변수 설정이 필요합니다. 로컬 `.env`와 인증키는 저장소에 업로드하지 않습니다.
+서비스 주소: https://majorway.vercel.app/
+
+GitHub Pages 주소 https://ljg9809-dotcom.github.io/majorway/ 는 루트 `index.html`을 통해 Vercel 서비스로 자동 이동합니다. 실제 화면과 서버 API는 Vercel에서 함께 제공합니다. GitHub 저장소에 API 인증키를 올리지 않습니다.
+
+Vercel 배포는 `vercel.json`을 사용합니다. 브라우저용 세 파일만 `dist/`로 준비하고 `/api/*` 요청을 `api/index.js`의 서버 함수로 연결합니다. 서버가 참조하는 학과 JSON을 함수에 포함하며 `.env`와 원본 압축본은 배포 대상에서 제외합니다. 환경 변수 `BUSAN_API_KEY`, `UNIVERSITY_API_KEY`를 Vercel 프로젝트 Production 환경에 등록한 뒤 배포하세요. 저장소에 연결된 자동 배포를 이용하면 main 브랜치 푸시로 변경 사항이 반영됩니다.
 
 ## 1. 키 없이 미리 보기
 

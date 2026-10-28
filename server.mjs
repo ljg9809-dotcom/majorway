@@ -46,7 +46,7 @@ async function loadLive(){
  try{return await pending;}finally{pending=null;}
 }
 function send(res,status,payload){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(payload));}
-export const server=http.createServer(async(req,res)=>{
+export async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
  try{
@@ -88,7 +88,8 @@ export const server=http.createServer(async(req,res)=>{
   const type={'index.html':'text/html','app.js':'text/javascript','style.css':'text/css'}[files[url.pathname]];
   res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});res.end(readFileSync(path.join(root,'public',files[url.pathname])));
  }catch(error){const safe=error instanceof PublicError||error instanceof UniversityError;send(res,safe?error.status:502,{error:safe?error.message:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
-});
+}
+export const server=http.createServer(handler);
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const port=Number(process.env.PORT)||3000;
  server.on('error',()=>{console.error('서버를 시작하지 못했습니다. 사용 중인 포트인지 확인해 주세요.');process.exitCode=1;});
