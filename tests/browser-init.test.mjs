@@ -14,7 +14,7 @@ class Element {
 }
 for(const legacy of [false,true])test(`화면 초기화 및 실제 학과 선택: ${legacy?'이전 HTML 구조':'최신 HTML 구조'}`,async()=>{
  const elements=new Map([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>[m[1],new Element()]));
- if(legacy)for(const id of ['sub-major-field','explore-path','explore-description'])elements.delete(id);
+ if(legacy)for(const id of ['sub-major-field','explore-path','explore-description','job-search'])elements.delete(id);
  const label=new Element('label'),calls=[];
  const major={id:'software',name:'컴퓨터',group:'공학',subs:['소프트웨어'],roles:[{name:'전산',desc:'시스템 운영',words:['전산']}]};
  const document={getElementById:id=>elements.get(id)||null,createElement:tag=>new Element(tag),querySelectorAll:()=>[],querySelector:()=>label};

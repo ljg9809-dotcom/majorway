@@ -114,6 +114,7 @@ $('department-closed').addEventListener('change',findDepartments);
 findDepartments();
 for(const id of ['sub-major','open-only','location-town','unknown-location'])$(id).addEventListener('change',loadJobs);
 let debounce;$('keyword').addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(loadJobs,300);});
+$('job-search')?.addEventListener('submit',event=>{event.preventDefault();clearTimeout(debounce);loadJobs();});
 $('refresh').onclick=loadJobs;$('about').onclick=()=>$('about-dialog').showModal();document.querySelectorAll('dialog .close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 async function init(){
  let data;
