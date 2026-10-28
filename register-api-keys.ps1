@@ -5,7 +5,7 @@ Write-Host '키는 이 창에서만 입력하세요. 입력한 문자는 숨겨�
 Write-Host '기존의 다른 설정은 유지됩니다. 취소하려면 Ctrl+C를 누르세요.'
 Write-Host ''
 try {
-    Write-Host '[1/2] 고용24 채용정보 API (저장 이름: BUSAN_API_KEY)'
+    Write-Host '[1/2] 잡알리오 공공기관 채용정보 API (저장 이름: BUSAN_API_KEY)'
     & (Join-Path $PSScriptRoot 'register-key.ps1') -KeyName 'BUSAN_API_KEY'
     Write-Host ''
     Write-Host '[2/2] 국내 대학 학과정보 API'

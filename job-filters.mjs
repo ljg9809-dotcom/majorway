@@ -52,7 +52,7 @@ export function employmentOf(job){
  if(/정규직/.test(text)&&!/비정규직|정규직\s*전환/.test(text))values.push('정규직');
  return values.length?values:['정보 미제공'];
 }
-export function annotateJob(job){return {...job,location:locationOf(job.source==='work24'&&job.workAddress?job.workAddress:job.region),experience:job.source==='work24'?job.experience:careerOf(job),employment:job.source==='work24'&&job.employment?job.employment:employmentOf(job)};}
+export function annotateJob(job){const official=['work24','alio'].includes(job.source);return {...job,location:locationOf(job.source==='work24'&&job.workAddress?job.workAddress:job.region),experience:official?job.experience:careerOf(job),employment:official&&job.employment?job.employment:employmentOf(job)};}
 export function locationCatalog(jobs=[]){
  return {city:'부산광역시',source:areaSource,townBasis:'공고 근무지역 표기 기준 · 법정동/행정동 자동 변환 없음',areas:busanAreas.map(a=>({...a,districts:a.districts.map(name=>({name,towns:[...new Set(jobs.flatMap(j=>(j.location||locationOf(j.region)).locations.filter(l=>l.district===name&&l.town).map(l=>l.town)))].sort((a,b)=>a.localeCompare(b,'ko'))}))})),experienceOptions,employmentOptions};
 }

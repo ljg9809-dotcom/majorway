@@ -40,7 +40,7 @@ export function dateOnly(value) {
 export function clean(value, key='') {
  let s=String(value??'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
  for(const secret of [key,encodeURIComponent(key)]) if(secret) s=s.split(secret).join('[비공개]');
- return s.replace(/(?:ServiceKey|serviceKey|authKey|WORK24_API_KEY|BUSAN_API_KEY)\s*[=:]\s*[^\s&<>"']+/gi,'인증정보=[비공개]').slice(0,30000);
+ return s.replace(/(?:ServiceKey|serviceKey|authKey|ALIO_API_KEY|WORK24_API_KEY|BUSAN_API_KEY)\s*[=:]\s*[^\s&<>"']+/gi,'인증정보=[비공개]').slice(0,30000);
 }
 export function normalize(row, key='') {
  const pick = k=>clean(row[k],key);

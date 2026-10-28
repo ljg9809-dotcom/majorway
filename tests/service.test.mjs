@@ -36,7 +36,7 @@ test('웹 경로 제한, 비밀 비노출, 예시 검색과 필터',async()=>{
   const jobs=await(await fetch(base+'/api/jobs?major=business&sub='+encodeURIComponent('회계·재무')+'&demo=1')).json();assert.equal(jobs.jobs.length,1);assert.equal(jobs.mode,'demo');
   const filtered=await(await fetch(base+'/api/jobs?major=software&demo=1&type='+encodeURIComponent('청년인턴'))).json();assert.ok(filtered.jobs.length>0);assert.ok(filtered.jobs.every(j=>j.type==='청년인턴'));
   process.env.BUSAN_API_KEY='sensitive-test-key';const original=globalThis.fetch;
-  globalThis.fetch=async(url,options)=>{if(String(url).startsWith('https://www.work24.go.kr/cm/openApi/'))throw new Error('sensitive-test-key');return original(url,options);};
+  globalThis.fetch=async(url,options)=>{if(String(url).startsWith('https://apis.data.go.kr/1051000/recruitment/'))throw new Error('sensitive-test-key');return original(url,options);};
   try{const response=await original(base+'/api/jobs?major=software');assert.equal(response.status,502);assert.ok(!(await response.text()).includes('sensitive-test-key'));}finally{globalThis.fetch=original;}
  }finally{await new Promise(r=>server.close(r));if(prior===undefined)delete process.env.BUSAN_API_KEY;else process.env.BUSAN_API_KEY=prior;}
 });

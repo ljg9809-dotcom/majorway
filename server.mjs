@@ -7,7 +7,7 @@ import {searchDepartments,getDepartment,departmentMetadata} from './departments.
 import {locationCatalog,annotateJob,validateFilters,passesFilters} from './job-filters.mjs';
 import {universityDetails,UniversityError} from './school-major-api.mjs';
 import {jobStatus,sourceHealth} from './job-health.mjs';
-import {loadWork24,work24Key,Work24Error} from './work24-api.mjs';
+import {loadAlio,alioKey,AlioError} from './alio-api.mjs';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 if(existsSync(path.join(root,'.env'))) process.loadEnvFile(path.join(root,'.env'));
@@ -31,7 +31,7 @@ export async function handler(req,res){
  try{
   const url=new URL(req.url,'http://localhost');
   if(req.method!=='GET')return send(res,405,{error:'허용되지 않은 요청입니다.'});
-  if(url.pathname==='/api/catalog')return send(res,200,{majors,configured:!!work24Key(),jobSource:'work24',universityConfigured:!!process.env.UNIVERSITY_API_KEY?.trim(),departmentMetadata,filters:locationCatalog()});
+  if(url.pathname==='/api/catalog')return send(res,200,{majors,configured:!!alioKey(),jobSource:'alio',universityConfigured:!!process.env.UNIVERSITY_API_KEY?.trim(),departmentMetadata,filters:locationCatalog()});
   if(url.pathname==='/api/university-info'){
    const profile=getDepartment(url.searchParams.get('department'));
    const year=Number(url.searchParams.get('year')||2026);
@@ -53,7 +53,7 @@ export async function handler(req,res){
    if(!validateFilters(url.searchParams))return send(res,400,{error:'지역 또는 채용 조건을 다시 선택해 주세요.'});
    const demo=url.searchParams.get('demo')==='1';
    const words=relatedWords(major,sub,role);
-   const data=demo?{jobs:demoJobs(),total:8,scanned:8,time:Date.now()}:await loadWork24(words);
+   const data=demo?{jobs:demoJobs(),total:8,scanned:8,time:Date.now()}:await loadAlio();
    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const q=(url.searchParams.get('q')||'').trim().slice(0,100),type=url.searchParams.get('type')||'';
    const annotated=data.jobs.map(annotateJob),facets=locationCatalog(annotated);
@@ -70,7 +70,7 @@ export async function handler(req,res){
   if(!files[url.pathname])return send(res,404,{error:'페이지를 찾을 수 없습니다.'});
   const type={'index.html':'text/html','app.js':'text/javascript','style.css':'text/css'}[files[url.pathname]];
   res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});res.end(readFileSync(path.join(root,'public',files[url.pathname])));
- }catch(error){const safe=error instanceof PublicError||error instanceof UniversityError||error instanceof Work24Error;send(res,safe?error.status:502,{error:safe?error.message:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
+ }catch(error){const safe=error instanceof PublicError||error instanceof UniversityError||error instanceof AlioError;send(res,safe?error.status:502,{error:safe?error.message:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
 }
 export const server=http.createServer(handler);
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

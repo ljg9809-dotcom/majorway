@@ -8,7 +8,7 @@ if(fs.existsSync(path.join(root,'.env')))process.loadEnvFile(path.join(root,'.en
 const git=args=>{const r=spawnSync('git',['-c','safe.directory='+root.replaceAll('\\','/'),...args],{cwd:root,maxBuffer:100*1024*1024,windowsHide:true});if(r.status!==0)throw new Error('Git index inspection failed');return r.stdout;};
 const files=git(['ls-files','-z']).toString().split('\0').filter(Boolean);
 const secrets=new Set();
-for(const name of ['BUSAN_API_KEY','WORK24_API_KEY','UNIVERSITY_API_KEY']){
+for(const name of ['BUSAN_API_KEY','ALIO_API_KEY','WORK24_API_KEY','UNIVERSITY_API_KEY']){
  const raw=process.env[name]?.trim();if(!raw)continue;
  const variants=[raw];try{variants.push(decodeURIComponent(raw));}catch{}
  for(const v of variants){if(v.length<10)continue;secrets.add(v);secrets.add(encodeURIComponent(v));}
