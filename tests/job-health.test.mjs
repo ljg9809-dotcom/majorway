@@ -14,19 +14,19 @@ test('제목의 연도로 접수 기간을 추정하지 않고 원천 누락을 
  assert.equal(jobStatus({...current,start:'2026-10-29',end:'2026-11-01'},'2026-10-28'),'접수 예정');
 });
 
-test('반복 페이지를 중단하고 원천 문제와 기간 필터 이전 결과를 응답',async()=>{
+test('고용24의 조회 범위와 기간 필터 이전 결과를 응답',async()=>{
  const original=globalThis.fetch,prior=process.env.BUSAN_API_KEY;process.env.BUSAN_API_KEY='test-health-key';let calls=0;
  globalThis.fetch=async(url,options)=>{
-  if(!String(url).startsWith('https://apis.data.go.kr/'))return original(url,options);
-  calls++;assert.equal(new URL(url).searchParams.get('numOfRows'),'1000');
-  return new Response(JSON.stringify({response:{body:{totalCount:11000,items:{item:[{title:'회계 담당',recruitAgencyName:'테스트',workregiontxt:'부산',reqDate_e:'20210426'},{title:'2026년 회계 채용',content:'회계',workregiontxt:null,reqDate_e:null}]}}}}));
+  if(!String(url).startsWith('https://www.work24.go.kr/cm/openApi/'))return original(url,options);
+  calls++;assert.equal(new URL(url).searchParams.get('display'),'100');
+  return new Response('<wantedRoot><total>1000</total><wanted><wantedAuthNo>old</wantedAuthNo><title>회계 담당</title><company>테스트</company><region>부산</region><closeDt>2021-04-26</closeDt></wanted><wanted><wantedAuthNo>missing</wantedAuthNo><title>2026년 회계 채용</title></wanted></wantedRoot>');
  };
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
  try{
   const data=await(await original(base+'/api/jobs?major=business&open=1')).json();
-  assert.equal(calls,2);assert.equal(data.repeatedPage,true);assert.equal(data.partial,true);assert.equal(data.unique,2);
+  assert.equal(calls,12);assert.equal(data.source,'work24');assert.equal(data.partial,true);assert.equal(data.unique,2);
   assert.equal(data.jobs.length,0);assert.equal(data.matchedBeforeOpen,1);assert.equal(data.health.latestDeadline,'2021-04-26');assert.ok(data.health.warning);
   assert.ok(!JSON.stringify(data).includes('test-health-key'));
-  const archive=await(await original(base+'/api/jobs?major=business&open=0')).json();assert.equal(archive.jobs.length,1);assert.equal(archive.jobs[0].status,'마감');assert.equal(calls,2);
+  const archive=await(await original(base+'/api/jobs?major=business&open=0')).json();assert.equal(archive.jobs.length,1);assert.equal(archive.jobs[0].status,'마감');assert.equal(calls,12);
  }finally{globalThis.fetch=original;await new Promise(r=>server.close(r));if(prior===undefined)delete process.env.BUSAN_API_KEY;else process.env.BUSAN_API_KEY=prior;}
 });

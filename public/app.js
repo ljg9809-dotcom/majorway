@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 let catalog=[],selected=null,selectedRole='',selectedDepartment='',currentJobs=[],requestId=0,controller,departmentRequest=0,departmentController,profileRequest=0;
 let filterData={areas:[]};
 let universityConfigured=false,universityRequest=0;
-const source='https://www.busanjob.net/';
+const source='https://www.work24.go.kr/';
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function message(text,error=false){$('result-message').replaceChildren(...(text?[el('div',text,'message'+(error?' error':''))]:[]));}
 function updateLocationControls(){
@@ -79,16 +79,16 @@ async function chooseDepartment(departmentId){
  }catch{if(id===profileRequest)$('department-hint').textContent='학과를 선택하지 못했어요. 다시 선택해 주세요.';}
 }
 function showDetail(job){
- const box=$('detail-body');box.replaceChildren(el('span',$('demo').checked?'DEMO · 가상 공고':'BUSAN · PUBLIC CAREER','section-kicker'),el('h2',job.title),el('p',job.agency));
- const grid=el('div',undefined,'detail-grid');for(const [label,value] of [['채용분야',job.field],['근무형태',job.type],['경력 조건',job.experience],['분류된 고용 형태',job.employment?.join(' · ')],['근무지역',job.region],['지역 정보',job.location?.detail],['접수방법',job.method],['접수시작',job.start],['접수마감',job.end]])grid.append(el('div',`${label}  ·  ${value||'기관 안내 확인'}`));box.append(grid,el('h3','공고 상세'),el('p',job.content||'제공된 상세 내용이 없습니다. 기관 공고를 확인해 주세요.','detail-content'),el('h3','내 전공과 연결된 이유'),el('p',`공고에서 ${job.match.words.join(', ')} 키워드가 발견됐어요. 지원 자격과 필수 전공은 공고 원문에서 별도로 확인하세요.`));
- if(!$('demo').checked){const a=el('a','부산일자리정보망에서 공고명 검색 ↗','detail-source');a.href=source;a.target='_blank';a.rel='noopener noreferrer';box.append(a,el('p','API에서 개별 공고 주소를 제공하지 않아 정보망 첫 화면으로 연결합니다.','small-muted'));}
+ const box=$('detail-body');box.replaceChildren(el('span',$('demo').checked?'DEMO · 가상 공고':'WORK24 · BUSAN CAREER','section-kicker'),el('h2',job.title),el('p',job.agency));
+ const grid=el('div',undefined,'detail-grid');for(const [label,value] of [['채용분야',job.field],['근무형태',job.type],['경력 조건',job.experience],['분류된 고용 형태',job.employment?.join(' · ')],['근무지역',job.workAddress||job.region],['급여',job.salary],['등록일',job.registered],['지역 정보',job.location?.detail],['접수방법',job.method],['접수시작',job.start],['접수마감',job.end]])grid.append(el('div',`${label}  ·  ${value||'기관 안내 확인'}`));box.append(grid,el('h3','공고 상세'),el('p',job.content||'제공된 상세 내용이 없습니다. 기관 공고를 확인해 주세요.','detail-content'),el('h3','내 전공과 연결된 이유'),el('p',`고용24 검색 결과·공고 제목에서 ${job.match.words.join(', ')} 키워드가 발견됐어요. 지원 자격과 필수 전공은 공고 원문에서 별도로 확인하세요.`));
+ if(!$('demo').checked){const a=el('a',job.sourceUrl?'고용24 공고 원문 보기 ↗':'고용24에서 공고명 검색 ↗','detail-source');a.href=job.sourceUrl||source;a.target='_blank';a.rel='noopener noreferrer';box.append(a,el('p','출처: 한국고용정보원 고용24 · 상세 지원 자격과 접수 상태는 원문을 확인하세요.','small-muted'));}
  $('detail').showModal();
 }
 function renderJobs(jobs){
  $('jobs').replaceChildren(...jobs.map(j=>{
   const card=el('article',undefined,'job'),top=el('div',undefined,'job-top');top.append(el('span',j.agency||'기관명 미제공','agency'),el('span',j.status,'badge'+(j.status==='마감'?' closed':'')));
   const bottom=el('div',undefined,'job-bottom'),tags=el('div',undefined,'match-tags');tags.append(...j.match.words.slice(0,4).map(w=>el('span',`# ${w}`)));const b=el('button','상세 보기 ↗','detail-button');b.setAttribute('aria-label',`${j.title} 상세 보기`);b.onclick=()=>showDetail(j);bottom.append(tags,b);
-  card.append(top,el('h3',j.title||'제목 미제공'),el('div',`${j.region||'지역 미제공'}  ·  ${j.type||'근무형태 확인'}  ·  ${j.end?j.end+' 마감':'일정 확인 필요'}`,'job-meta'),el('div',`경력: ${j.experience} · 고용: ${j.employment.join(' · ')} · ${j.location.detail}`,'job-meta'),bottom);return card;
+  card.append(top,el('h3',j.title||'제목 미제공'),el('div',`${j.region||'지역 미제공'}  ·  ${j.type||'근무형태 확인'}  ·  ${j.end?j.end+' 마감':j.deadlineLabel||'일정 확인 필요'}`,'job-meta'),el('div',`경력: ${j.experience} · 고용: ${j.employment.join(' · ')} · ${j.location.detail}`,'job-meta'),bottom);return card;
  }));
 }
 function showJobFeedback(data,demo){
@@ -102,15 +102,19 @@ function showJobFeedback(data,demo){
   button.onclick=()=>{$('open-only').checked=false;loadJobs();};$('result-message').append(button);
  }
  if(!demo&&(empty||health?.warning)){
-  const link=el('a','공식 부산일자리정보망 최신 공고 확인 ↗','detail-source');link.href='https://busanjob.net/view.do?no=1309';link.target='_blank';link.rel='noopener noreferrer';$('result-message').append(link);
+  const link=el('a','고용24에서 채용정보 확인 ↗','detail-source');link.href=source;link.target='_blank';link.rel='noopener noreferrer';$('result-message').append(link);
  }
  if(demo){$('coverage').textContent='화면 체험용 가상 데이터입니다. 실제 지원에 사용할 수 없습니다.';return;}
+ if(data.source==='work24'){
+  $('mode-label').textContent='● 고용24 · 민간기업 포함';
+  $('coverage').textContent=`출처: 고용24 · 부산 근무 · 관련 키워드 ${data.searchCount}개 검색 · 응답 ${data.scanned}건 / 중복 제거 ${data.unique}건 · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 키워드별 최신 100건까지 조회한 일부 범위입니다. 부산 전체 공고 검색 결과가 아닙니다.':''} · 현재 제공되는 공고만 조회하므로 마감 공고 전체를 제공하지 않습니다.`;return;
+ }
  const latest=health?.latestDeadline?` · 제공된 마감일 중 가장 최근: ${health.latestDeadline}`:'';
  $('coverage').textContent=`API 전체 ${data.total.toLocaleString()}건 중 응답 ${data.scanned.toLocaleString()}건 확인 · 중복 제거 ${data.unique??data.scanned}건${health?` · 마감일 미제공 ${health.missingDeadline}건 · 부산 근무 여부 미확인 ${health.missingLocation}건`:''}${latest} · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 일부 범위 조회':''}${data.repeatedPage?' · 제공처가 같은 페이지를 반복 반환해 추가 조회를 중단했습니다.':''}`;
 }
 async function loadJobs(){
  if(!selected)return;const id=++requestId;controller?.abort();controller=new AbortController();$('refresh').disabled=true;currentJobs=[];$('count').textContent='…';$('jobs').replaceChildren();$('coverage').textContent='';message('전공과 연결된 공고를 찾고 있어요…');
- const demo=$('demo').checked;$('mode-label').textContent=demo?'● 예시 데이터 · 실제 채용공고가 아닙니다':'● 부산광역시 공공 API';
+ const demo=$('demo').checked;$('mode-label').textContent=demo?'● 예시 데이터 · 실제 채용공고가 아닙니다':'● 고용24 · 민간기업 포함';
  if(!selected.roles.length){$('count').textContent='0';message('이 학과의 직무 연결은 검토 중입니다. 가까운 관심 분야를 선택해 탐색해 보세요.');$('refresh').disabled=false;return;}
  const params=new URLSearchParams({major:selected.id,department:selectedDepartment,sub:selectedDepartment?'':$('sub-major').value,role:selectedRole,q:$('keyword').value,open:$('open-only').checked?'1':'0',demo:demo?'1':'0',area:$('location-area').value,district:$('location-district').value,town:$('location-town').value,includeUnknownLocation:$('unknown-location').checked?'1':'0'});
  for(const name of ['experience','employment'])document.querySelectorAll(`input[name="${name}"]:checked`).forEach(input=>params.append(name,input.value));

@@ -1,10 +1,10 @@
 ﻿param(
-    [ValidateSet('BUSAN_API_KEY', 'UNIVERSITY_API_KEY')]
+    [ValidateSet('BUSAN_API_KEY', 'WORK24_API_KEY', 'UNIVERSITY_API_KEY')]
     [string]$KeyName = 'BUSAN_API_KEY'
 )
 $ErrorActionPreference = 'Stop'
 $envPath = Join-Path $PSScriptRoot '.env'
-$promptLabel = if ($KeyName -eq 'BUSAN_API_KEY') { '부산 채용정보 API 인증키' } else { '국내 대학 학과정보 API 인증키' }
+$promptLabel = if ($KeyName -in @('BUSAN_API_KEY', 'WORK24_API_KEY')) { '고용24 채용정보 API 인증키' } else { '국내 대학 학과정보 API 인증키' }
 $secureKey = Read-Host ($promptLabel + ' 입력 (화면에 표시되지 않습니다)') -AsSecureString
 $pointer = [IntPtr]::Zero
 try {

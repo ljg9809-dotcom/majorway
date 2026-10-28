@@ -1,7 +1,7 @@
 import {annotateJob} from './job-filters.mjs';
 
 export function jobStatus(job,today){
- if(!job.end)return '일정 확인';
+ if(!job.end)return job.source==='work24'&&job.rolling?'접수 중':'일정 확인';
  if(job.end<today)return '마감';
  return job.start&&job.start>today?'접수 예정':'접수 중';
 }

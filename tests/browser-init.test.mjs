@@ -34,7 +34,7 @@ for(const legacy of [false,true])test(`화면 초기화 및 실제 학과 선택
  vm.runInContext("showJobFeedback({jobs:[],matchedBeforeOpen:3,health:{warning:'원천 데이터 확인 필요',missingDeadline:2,missingLocation:1,latestDeadline:'2021-04-26'},total:11000,scanned:2000,unique:1000,partial:true,repeatedPage:true,updatedAt:new Date().toISOString()},false);",sandbox);
  const feedback=elements.get('result-message').children;
  assert.equal(feedback[0].textContent,'원천 데이터 확인 필요');
- assert.equal(feedback.find(n=>n.tag==='a').href,'https://busanjob.net/view.do?no=1309');
+ assert.equal(feedback.find(n=>n.tag==='a').href,'https://www.work24.go.kr/');
  const archive=feedback.find(n=>n.tag==='button');assert.ok(archive.textContent.includes('3건'));
  archive.onclick();assert.equal(elements.get('open-only').checked,false);
  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));

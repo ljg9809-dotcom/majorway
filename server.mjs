@@ -7,13 +7,12 @@ import {searchDepartments,getDepartment,departmentMetadata} from './departments.
 import {locationCatalog,annotateJob,validateFilters,passesFilters} from './job-filters.mjs';
 import {universityDetails,UniversityError} from './school-major-api.mjs';
 import {jobStatus,sourceHealth} from './job-health.mjs';
+import {loadWork24,work24Key,Work24Error} from './work24-api.mjs';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 if(existsSync(path.join(root,'.env'))) process.loadEnvFile(path.join(root,'.env'));
-const endpoint='https://apis.data.go.kr/6260000/BusanJobOpnngInfoService/getJobOpnngInfo';
-let cache=null,pending=null;
+
 class PublicError extends Error { constructor(message,status=502){super(message);this.status=status;} }
-function keyValue(){let k=(process.env.BUSAN_API_KEY||'').trim();try{if(k.includes('%'))k=decodeURIComponent(k);}catch{}return k;}
 export function parseResponse(data,key=''){
  const envelope=data?.response??data?.getJobOpnngInfo??data;
  const header=envelope?.header??envelope;
@@ -25,30 +24,6 @@ export function parseResponse(data,key=''){
  if(!Array.isArray(rows))rows=[rows];
  return {jobs:rows.filter(x=>x&&typeof x==='object').map(x=>normalize(x,key)),total:Number(body.totalCount)||rows.length};
 }
-async function loadLive(){
- const key=keyValue();if(!key)throw new PublicError('API 키가 아직 등록되지 않았습니다. 터미널에서 키 등록 후 서버를 다시 시작해 주세요.',503);
- if(cache&&Date.now()-cache.time<300000)return cache;
- if(pending)return pending;
- pending=(async()=>{
-  let jobs=[],total=0,scanned=0;const seenPages=new Set();let repeatedPage=false;
-  // One bounded refresh; parallel requests are coalesced and cached for five minutes.
-  for(let page=1;page<=3;page++){
-   const url=new URL(endpoint);url.search=new URLSearchParams({ServiceKey:key,pageNo:String(page),numOfRows:'1000',resultType:'json'});
-   const res=await fetch(url,{signal:AbortSignal.timeout(12000),redirect:'error'});
-   if(!res.ok)throw new PublicError('공공 API에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-   const raw=await res.text();if(raw.length>8000000)throw new PublicError('공공 API 응답이 너무 큽니다. 잠시 후 다시 시도해 주세요.');
-   let parsed;try{parsed=JSON.parse(raw);}catch{throw new PublicError('인증 승인 상태를 확인해 주세요. 공공 API에서 JSON 응답을 받지 못했습니다.');}
-   const batch=parseResponse(parsed,key);total=batch.total;scanned+=batch.jobs.length;
-   const fingerprint=JSON.stringify(batch.jobs);
-   if(seenPages.has(fingerprint)){repeatedPage=true;break;}
-   seenPages.add(fingerprint);jobs.push(...batch.jobs);
-   if(scanned>=total||!batch.jobs.length)break;
-  }
-  const unique=new Map();for(const j of jobs)unique.set(JSON.stringify([j.title,j.agency,j.start,j.end,j.field]),j);
-  cache={jobs:[...unique.values()],total,scanned,repeatedPage,time:Date.now()};return cache;
- })();
- try{return await pending;}finally{pending=null;}
-}
 function send(res,status,payload){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(payload));}
 export async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
@@ -56,7 +31,7 @@ export async function handler(req,res){
  try{
   const url=new URL(req.url,'http://localhost');
   if(req.method!=='GET')return send(res,405,{error:'허용되지 않은 요청입니다.'});
-  if(url.pathname==='/api/catalog')return send(res,200,{majors,configured:!!keyValue(),universityConfigured:!!process.env.UNIVERSITY_API_KEY?.trim(),departmentMetadata,filters:locationCatalog()});
+  if(url.pathname==='/api/catalog')return send(res,200,{majors,configured:!!work24Key(),jobSource:'work24',universityConfigured:!!process.env.UNIVERSITY_API_KEY?.trim(),departmentMetadata,filters:locationCatalog()});
   if(url.pathname==='/api/university-info'){
    const profile=getDepartment(url.searchParams.get('department'));
    const year=Number(url.searchParams.get('year')||2026);
@@ -77,8 +52,9 @@ export async function handler(req,res){
    if((sub&&!major.subs.includes(sub))||(role&&!major.roles.some(r=>r.name===role)))return send(res,400,{error:'세부 전공 또는 직무를 다시 선택해 주세요.'});
    if(!validateFilters(url.searchParams))return send(res,400,{error:'지역 또는 채용 조건을 다시 선택해 주세요.'});
    const demo=url.searchParams.get('demo')==='1';
-   const data=demo?{jobs:demoJobs(),total:8,scanned:8,time:Date.now()}:await loadLive();
-   const words=relatedWords(major,sub,role);const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const words=relatedWords(major,sub,role);
+   const data=demo?{jobs:demoJobs(),total:8,scanned:8,time:Date.now()}:await loadWork24(words);
+   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const q=(url.searchParams.get('q')||'').trim().slice(0,100),type=url.searchParams.get('type')||'';
    const annotated=data.jobs.map(annotateJob),facets=locationCatalog(annotated);
    let jobs=annotated.map(j=>({...j,match:matching(j,words),status:jobStatus(j,today)}));
@@ -87,13 +63,14 @@ export async function handler(req,res){
    const matchedBeforeOpen=jobs.length;
    if(url.searchParams.get('open')==='1')jobs=jobs.filter(j=>j.status==='접수 중');
    jobs.sort((a,b)=>b.match.score-a.match.score||(a.end||'9999').localeCompare(b.end||'9999'));
-   return send(res,200,{jobs,facets,mode:demo?'demo':'live',total:data.total,scanned:data.scanned,unique:data.jobs.length,partial:!!data.repeatedPage||data.scanned<data.total,repeatedPage:!!data.repeatedPage,health:demo?null:sourceHealth(data.jobs,today),matchedBeforeOpen,updatedAt:new Date(data.time).toISOString(),words});
+   const health=demo?null:sourceHealth(data.jobs,today);if(health&&!data.jobs.length)health.warning='';
+   return send(res,200,{jobs,facets,mode:demo?'demo':'live',source:data.source,sourceLabel:data.sourceLabel,sourceUrl:data.sourceUrl,searchCount:data.searchCount,queryTotal:data.queryTotal,total:data.total,scanned:data.scanned,unique:data.jobs.length,partial:!!data.partial,health,matchedBeforeOpen,updatedAt:new Date(data.time).toISOString(),words});
   }
   const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css'};
   if(!files[url.pathname])return send(res,404,{error:'페이지를 찾을 수 없습니다.'});
   const type={'index.html':'text/html','app.js':'text/javascript','style.css':'text/css'}[files[url.pathname]];
   res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});res.end(readFileSync(path.join(root,'public',files[url.pathname])));
- }catch(error){const safe=error instanceof PublicError||error instanceof UniversityError;send(res,safe?error.status:502,{error:safe?error.message:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
+ }catch(error){const safe=error instanceof PublicError||error instanceof UniversityError||error instanceof Work24Error;send(res,safe?error.status:502,{error:safe?error.message:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
 }
 export const server=http.createServer(handler);
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

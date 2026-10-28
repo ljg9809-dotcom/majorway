@@ -26,7 +26,7 @@ export function relatedWords(major, sub, role) {
 }
 export function matching(job, words) {
  const primary = `${job.title} ${job.field}`;
- const found = words.filter(w=>`${primary} ${job.content}`.toLowerCase().includes(w.toLowerCase()));
+ const found = words.filter(w=>job.matchedKeywords?.includes(w)||`${primary} ${job.content}`.toLowerCase().includes(w.toLowerCase()));
  return {words:found,score:found.reduce((n,w)=>n+(primary.includes(w)?3:1),0)};
 }
 export function dateOnly(value) {
@@ -40,7 +40,7 @@ export function dateOnly(value) {
 export function clean(value, key='') {
  let s=String(value??'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
  for(const secret of [key,encodeURIComponent(key)]) if(secret) s=s.split(secret).join('[비공개]');
- return s.replace(/(?:ServiceKey|serviceKey|BUSAN_API_KEY)\s*[=:]\s*[^\s&<>"']+/gi,'인증정보=[비공개]').slice(0,30000);
+ return s.replace(/(?:ServiceKey|serviceKey|authKey|WORK24_API_KEY|BUSAN_API_KEY)\s*[=:]\s*[^\s&<>"']+/gi,'인증정보=[비공개]').slice(0,30000);
 }
 export function normalize(row, key='') {
  const pick = k=>clean(row[k],key);
