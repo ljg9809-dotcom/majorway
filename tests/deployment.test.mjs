@@ -8,6 +8,8 @@ import {server} from '../server.mjs';
 test('GitHub Pages는 실제 서비스로 이동하고 Vercel 정적 출력에는 화면 파일만 포함',()=>{
  const entry=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  assert.match(entry,/http-equiv="refresh" content="0; url=https:\/\/majorway\.vercel\.app\/"/);
+ assert.equal(fs.readFileSync(new URL('../docs/index.html',import.meta.url),'utf8'),entry);
+ assert.ok(fs.existsSync(new URL('../docs/.nojekyll',import.meta.url)));
  execFileSync(process.execPath,['scripts/build-vercel.mjs'],{cwd:new URL('..',import.meta.url),stdio:'pipe'});
  const files=fs.readdirSync(new URL('../dist/',import.meta.url)).sort();
  assert.deepEqual(files,['app.js','index.html','style.css']);

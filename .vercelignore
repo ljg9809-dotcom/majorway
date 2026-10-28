@@ -2,6 +2,7 @@
 .env.*
 .git/
 tests/
+docs/
 data/academy-2026-source.json.gz
 *.ps1
 README.md

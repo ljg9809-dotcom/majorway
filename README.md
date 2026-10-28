@@ -4,7 +4,7 @@ Node.js 22 이상에서 별도 패키지 설치 없이 실행합니다. 로컬 �
 
 서비스 주소: https://majorway.vercel.app/
 
-GitHub Pages 주소 https://ljg9809-dotcom.github.io/majorway/ 는 루트 `index.html`을 통해 Vercel 서비스로 자동 이동합니다. 실제 화면과 서버 API는 Vercel에서 함께 제공합니다. GitHub 저장소에 API 인증키를 올리지 않습니다.
+GitHub Pages 주소 https://ljg9809-dotcom.github.io/majorway/ 는 현재 Pages 설정인 `main /docs`의 `docs/index.html`을 통해 Vercel 서비스로 자동 이동합니다. Pages를 루트로 바꾸는 경우에도 같은 동작을 하도록 루트 `index.html`을 함께 유지합니다. 두 위치의 `.nojekyll`은 정적 HTML을 그대로 제공합니다. 실제 화면과 서버 API는 Vercel에서 함께 제공합니다. GitHub 저장소에 API 인증키를 올리지 않습니다.
 
 Vercel 배포는 `vercel.json`을 사용합니다. 브라우저용 세 파일만 `dist/`로 준비하고 `/api/*` 요청을 `api/index.js`의 서버 함수로 연결합니다. 서버가 참조하는 학과 JSON을 함수에 포함하며 `.env`와 원본 압축본은 배포 대상에서 제외합니다. 환경 변수 `BUSAN_API_KEY`, `UNIVERSITY_API_KEY`를 Vercel 프로젝트 Production 환경에 등록한 뒤 배포하세요. 저장소에 연결된 자동 배포를 이용하면 main 브랜치 푸시로 변경 사항이 반영됩니다.
 
