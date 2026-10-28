@@ -86,7 +86,7 @@ export const server=http.createServer(async(req,res)=>{
   const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css'};
   if(!files[url.pathname])return send(res,404,{error:'페이지를 찾을 수 없습니다.'});
   const type={'index.html':'text/html','app.js':'text/javascript','style.css':'text/css'}[files[url.pathname]];
-  res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',files[url.pathname])));
+  res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});res.end(readFileSync(path.join(root,'public',files[url.pathname])));
  }catch(error){const safe=error instanceof PublicError||error instanceof UniversityError;send(res,safe?error.status:502,{error:safe?error.message:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
 });
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

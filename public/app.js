@@ -29,9 +29,11 @@ function setProfile(m){
  universityRequest++;$('university-panel').hidden=true;selected=m;selectedRole='';
  $('selected-major').textContent=m.name;
  $('sub-major').replaceChildren(new Option('세부 전공 전체',''),...m.subs.map(s=>new Option(s,s)));
- $('sub-major-field').hidden=!!selectedDepartment;
- $('explore-path').textContent=selectedDepartment?'선택한 학과 → 관련 직무 → 채용정보':'관심 분야 → 세부 전공 → 관련 직무';
- $('explore-description').textContent=selectedDepartment?'학과가 선택됐어요. 원하는 지역과 채용 조건을 고르면 관련 공고를 확인할 수 있어요.':'조금 더 구체적으로, 나에게 가까운 분야를 찾아보세요.';
+ const subField=$('sub-major-field');
+ if(subField)subField.hidden=!!selectedDepartment;
+ else{$('sub-major').hidden=!!selectedDepartment;const label=document.querySelector('label[for="sub-major"]');if(label)label.hidden=!!selectedDepartment;}
+ const pathLabel=$('explore-path');if(pathLabel)pathLabel.textContent=selectedDepartment?'선택한 학과 → 관련 직무 → 채용정보':'관심 분야 → 세부 전공 → 관련 직무';
+ const description=$('explore-description');if(description)description.textContent=selectedDepartment?'학과가 선택됐어요. 원하는 지역과 채용 조건을 고르면 관련 공고를 확인할 수 있어요.':'조금 더 구체적으로, 나에게 가까운 분야를 찾아보세요.';
  renderMajors();renderRoles();loadJobs();
 }
 function prepareUniversity(profile){
@@ -113,5 +115,11 @@ findDepartments();
 for(const id of ['sub-major','open-only','location-town','unknown-location'])$(id).addEventListener('change',loadJobs);
 let debounce;$('keyword').addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(loadJobs,300);});
 $('refresh').onclick=loadJobs;$('about').onclick=()=>$('about-dialog').showModal();document.querySelectorAll('dialog .close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-async function init(){try{const response=await fetch('/api/catalog');if(!response.ok)throw new Error();const data=await response.json();catalog=data.majors;universityConfigured=!!data.universityConfigured;filterData=data.filters||{areas:[]};updateLocationControls();$('demo').checked=!data.configured;$('setup-note').hidden=data.configured;selectMajor(catalog[0]);}catch{message('설정을 불러오지 못했어요. 서버 실행 상태를 확인하고 페이지를 새로고침해 주세요.',true);}}
+async function init(){
+ let data;
+ try{const response=await fetch('/api/catalog',{cache:'no-store'});if(!response.ok)throw new Error();data=await response.json();if(!Array.isArray(data.majors)||!data.majors.length)throw new Error();}
+ catch{message('설정을 불러오지 못했어요. 서버 실행 상태를 확인하고 페이지를 새로고침해 주세요.',true);return;}
+ try{catalog=data.majors;universityConfigured=!!data.universityConfigured;filterData=data.filters||{areas:[]};updateLocationControls();$('demo').checked=!data.configured;$('setup-note').hidden=data.configured;selectMajor(catalog[0]);}
+ catch{message('화면을 초기화하지 못했어요. 페이지를 새로고침해 최신 화면을 불러와 주세요.',true);}
+}
 init();
