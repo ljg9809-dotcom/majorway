@@ -4,6 +4,7 @@
 tests/
 docs/
 data/academy-2026-source.json.gz
+data/regions-source.zip
 *.ps1
 README.md
 /index.html

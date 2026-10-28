@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.js": {
-      "includeFiles": "{public/**,data/university-departments.json}",
+      "includeFiles": "{public/**,data/university-departments.json,data/regions.json}",
       "maxDuration": 60
     }
   },

@@ -10,7 +10,7 @@ test('공식 XML 필드·두 자리 연도·원문 링크·구동·경력/계약
  const data=parseWork24Xml(xml,'test-work-key','소프트웨어'),j=annotateJob(data.jobs[0]);
  assert.equal(j.end,'2026-11-30');assert.equal(j.registered,'2026-10-28');assert.equal(j.start,null);
  assert.equal(j.agency,'테스트 & 회사');assert.equal(j.experience,'신입');assert.deepEqual(j.employment,['계약직']);assert.equal(j.type,'기간의 정함이 있는 근로계약');
- assert.equal(j.location.locations[0].town,'우동');assert.ok(passesFilters(j,new URLSearchParams({district:'해운대구',town:'우동',experience:'신입',employment:'계약직'})));
+ assert.equal(j.location.locations[0].town,'2635010500');assert.ok(passesFilters(j,new URLSearchParams({province:'26',district:'26350',town:'2635010500',experience:'신입',employment:'계약직'})));
  assert.ok(!JSON.stringify(j).includes('test-work-key'));assert.ok(!j.sourceUrl.includes('authKey'));assert.ok(j.sourceUrl.includes('wantedAuthNo=K123'));
  assert.ok(matching(j,['소프트웨어']).words.includes('소프트웨어'));
  assert.equal(work24Date('26.2.30'),null);assert.equal(work24Date('2026.2.3'),'2026-02-03');

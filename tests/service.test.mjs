@@ -26,7 +26,7 @@ test('웹 경로 제한, 비밀 비노출, 예시 검색과 필터',async()=>{
   assert.equal((await fetch(base+'/api/jobs?major=software')).status,503);
   assert.equal((await fetch(base+'/api/jobs?major=unknown&demo=1')).status,400);
   assert.equal((await fetch(base+'/api/jobs?major=software&demo=1&area=west&district='+encodeURIComponent('해운대구'))).status,400);
-  const local=await(await fetch(base+'/api/jobs?major=software&demo=1&area=east&district='+encodeURIComponent('해운대구')+'&town='+encodeURIComponent('우동')+'&experience='+encodeURIComponent('신입')+'&employment='+encodeURIComponent('인턴'))).json();assert.equal(local.jobs.length,1);assert.equal(local.jobs[0].location.locations[0].town,'우동');
+  const local=await(await fetch(base+'/api/jobs?major=software&demo=1&province=26&district=26350&town=2635010500'+'&experience='+encodeURIComponent('신입')+'&employment='+encodeURIComponent('인턴'))).json();assert.equal(local.jobs.length,1);assert.equal(local.jobs[0].location.locations[0].town,'2635010500');
   const departments=await(await fetch(base+'/api/departments?q='+encodeURIComponent('경영정보학과'))).json();
   const exact=departments.items.find(d=>d.name==='경영정보학과');assert.ok(exact);
   const profile=await(await fetch(base+'/api/department?id='+exact.id)).json();assert.equal(profile.department.year,2026);

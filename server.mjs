@@ -53,10 +53,10 @@ export async function handler(req,res){
    if(!validateFilters(url.searchParams))return send(res,400,{error:'지역 또는 채용 조건을 다시 선택해 주세요.'});
    const demo=url.searchParams.get('demo')==='1';
    const words=relatedWords(major,sub,role);
-   const data=demo?{jobs:demoJobs(),total:8,scanned:8,time:Date.now()}:await loadAlio();
+   const data=demo?{jobs:demoJobs(),total:8,scanned:8,time:Date.now()}:await loadAlio(url.searchParams.get('province')||'');
    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const q=(url.searchParams.get('q')||'').trim().slice(0,100),type=url.searchParams.get('type')||'';
-   const annotated=data.jobs.map(annotateJob),facets=locationCatalog(annotated);
+   const annotated=data.jobs.map(annotateJob);
    let jobs=annotated.map(j=>({...j,match:matching(j,words),status:jobStatus(j,today)}));
    jobs=jobs.filter(j=>j.match.score>0&&(!q||`${j.title} ${j.agency} ${j.content}`.includes(q))&&(!type||j.type.includes(type)));
    jobs=jobs.filter(j=>passesFilters(j,url.searchParams));
@@ -64,7 +64,7 @@ export async function handler(req,res){
    if(url.searchParams.get('open')==='1')jobs=jobs.filter(j=>j.status==='접수 중');
    jobs.sort((a,b)=>b.match.score-a.match.score||(a.end||'9999').localeCompare(b.end||'9999'));
    const health=demo?null:sourceHealth(data.jobs,today);if(health&&!data.jobs.length)health.warning='';
-   return send(res,200,{jobs,facets,mode:demo?'demo':'live',source:data.source,sourceLabel:data.sourceLabel,sourceUrl:data.sourceUrl,searchCount:data.searchCount,queryTotal:data.queryTotal,total:data.total,scanned:data.scanned,unique:data.jobs.length,partial:!!data.partial,health,matchedBeforeOpen,updatedAt:new Date(data.time).toISOString(),words});
+   return send(res,200,{jobs,mode:demo?'demo':'live',source:data.source,sourceLabel:data.sourceLabel,sourceUrl:data.sourceUrl,regionScope:data.regionScope,total:data.total,scanned:data.scanned,unique:data.jobs.length,partial:!!data.partial,health,matchedBeforeOpen,updatedAt:new Date(data.time).toISOString(),words});
   }
   const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css'};
   if(!files[url.pathname])return send(res,404,{error:'페이지를 찾을 수 없습니다.'});

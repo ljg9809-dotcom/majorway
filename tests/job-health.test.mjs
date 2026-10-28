@@ -7,8 +7,9 @@ test('제목의 연도로 접수 기간을 추정하지 않고 원천 누락을 
  const jobs=[{title:'2026년 채용',region:'',start:null,end:null},{title:'과거 공고',region:'부산',end:'2021-04-26'},{title:'현재 타지역',region:'서울',end:'2026-11-01'}];
  const health=sourceHealth(jobs,'2026-10-28');
  assert.equal(jobStatus(jobs[0],'2026-10-28'),'일정 확인');
- assert.equal(health.missingDeadline,1);assert.equal(health.missingLocation,2);
- assert.equal(health.current,1);assert.equal(health.currentBusan,0);assert.ok(health.warning);
+ assert.equal(health.missingDeadline,1);assert.equal(health.missingLocation,1);
+ assert.equal(health.current,1);assert.equal(health.currentDomestic,1);assert.equal(health.warning,'');
+ assert.ok(sourceHealth(jobs.slice(0,2),'2026-10-28').warning);
  const current={title:'부산 채용',region:'부산 해운대구',start:'2026-10-28',end:'2026-10-28'};
  assert.equal(sourceHealth([current],'2026-10-28').warning,'');
  assert.equal(jobStatus({...current,start:'2026-10-29',end:'2026-11-01'},'2026-10-28'),'접수 예정');

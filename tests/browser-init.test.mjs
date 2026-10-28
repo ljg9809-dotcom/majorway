@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+const regions=JSON.parse(fs.readFileSync(new URL('../data/regions.json',import.meta.url),'utf8'));
 class Element {
- constructor(tag='div',text=''){this.tag=tag;this.textContent=text;this.value='';this.hidden=false;this.checked=false;this.children=[];}
+ constructor(tag='div',text=''){this.tag=tag;this.textContent=text;this.value='';this.hidden=false;this.checked=false;this.children=[];this.listeners={};}
  append(...nodes){this.children.push(...nodes);}
  replaceChildren(...nodes){this.children=nodes;}
- addEventListener(){}
+ addEventListener(name,handler){this.listeners[name]=handler;}
  setAttribute(){}
  scrollIntoView(){}
 }
@@ -18,7 +19,7 @@ for(const legacy of [false,true])test(`화면 초기화 및 실제 학과 선택
  const label=new Element('label'),calls=[];
  const major={id:'software',name:'컴퓨터',group:'공학',subs:['소프트웨어'],roles:[{name:'전산',desc:'시스템 운영',words:['전산']}]};
  const document={getElementById:id=>elements.get(id)||null,createElement:tag=>new Element(tag),querySelectorAll:()=>[],querySelector:()=>label};
- const sandbox={document,Option:function(text,value){this.text=text;this.value=value;},URLSearchParams,AbortController,setTimeout,clearTimeout,testMajor:major,fetch:async url=>{calls.push(String(url));return {ok:true,json:async()=>String(url).startsWith('/api/catalog')?{majors:[major],configured:true,universityConfigured:true,filters:{areas:[]}}:{jobs:[],mode:'live',total:0,scanned:0,updatedAt:new Date().toISOString(),facets:{areas:[]}}};}};
+ const sandbox={document,Option:function(text,value){this.text=text;this.value=value;},URLSearchParams,AbortController,setTimeout,clearTimeout,testMajor:major,fetch:async url=>{calls.push(String(url));return {ok:true,json:async()=>String(url).startsWith('/api/catalog')?{majors:[major],configured:true,universityConfigured:true,filters:{provinces:[]}}:{jobs:[],mode:'live',total:0,scanned:0,updatedAt:new Date().toISOString(),facets:{provinces:[]}}};}};
  vm.createContext(sandbox);vm.runInContext(app,sandbox);
  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
  const status=()=>elements.get('result-message').children.map(e=>e.textContent).join(' ');
@@ -39,4 +40,13 @@ for(const legacy of [false,true])test(`화면 초기화 및 실제 학과 선택
  archive.onclick();assert.equal(elements.get('open-only').checked,false);
  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
  assert.ok(calls.at(-1).includes('open=0'));
+ sandbox.testRegions=regions;
+ vm.runInContext('filterData=testRegions;updateLocationControls();',sandbox);
+ const province=elements.get('location-province'),district=elements.get('location-district'),town=elements.get('location-town');
+ province.value='26';province.listeners.change();district.value='26350';district.listeners.change();town.value='2635010500';
+ assert.equal(town.disabled,false);
+ province.value='11';province.listeners.change();assert.equal(district.value,'');assert.equal(town.value,'');assert.equal(town.disabled,true);
+ province.value='36';province.listeners.change();assert.equal(district.value,'36110');assert.equal(town.disabled,false);
+ province.value='';province.listeners.change();assert.equal(district.disabled,true);assert.equal(town.disabled,true);
+ for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
 });

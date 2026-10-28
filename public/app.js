@@ -1,20 +1,22 @@
 const $=id=>document.getElementById(id);
 let catalog=[],selected=null,selectedRole='',selectedDepartment='',currentJobs=[],requestId=0,controller,departmentRequest=0,departmentController,profileRequest=0;
-let filterData={areas:[]};
+let filterData={provinces:[]};
 let universityConfigured=false,universityRequest=0;
 const source='https://job.alio.go.kr/recruit.do';
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function message(text,error=false){$('result-message').replaceChildren(...(text?[el('div',text,'message'+(error?' error':''))]:[]));}
 function updateLocationControls(){
- const area=$('location-area').value,district=$('location-district').value,town=$('location-town').value;
- $('location-area').replaceChildren(new Option('부산 전체 권역',''),...filterData.areas.map(a=>new Option(a.name,a.id)));$('location-area').value=area;
- const choices=filterData.areas.filter(a=>!area||a.id===area).flatMap(a=>a.districts);
- $('location-district').replaceChildren(new Option('구·군 전체',''),...choices.map(d=>new Option(d.name,d.name)));$('location-district').value=choices.some(d=>d.name===district)?district:'';
- const active=choices.find(d=>d.name===$('location-district').value),towns=active?.towns||[];
- const placeholder=!active?'구·군을 먼저 선택하세요':!towns.length?'동 정보 제공 공고 없음':'동·읍·면 전체';
- $('location-town').replaceChildren(new Option(placeholder,''),...towns.map(t=>new Option(t,t)));$('location-town').value=towns.includes(town)?town:'';$('location-town').disabled=!active||!towns.length;
+ const province=$('location-province').value,district=$('location-district').value,town=$('location-town').value;
+ const provinces=filterData.provinces||[];
+ $('location-province').replaceChildren(new Option('전국 전체',''),...provinces.map(p=>new Option(p.name,p.id)));$('location-province').value=provinces.some(p=>p.id===province)?province:'';
+ const active=provinces.find(p=>p.id===$('location-province').value),districts=active?.districts||[];
+ $('location-district').replaceChildren(new Option(active?'시·군·구 전체':'시·도를 먼저 선택하세요',''),...districts.map(d=>new Option(d.name,d.id)));
+ $('location-district').value=districts.some(d=>d.id===district)?district:districts.length===1&&districts[0].direct?districts[0].id:'';
+ $('location-district').disabled=!active;
+ const selected=districts.find(d=>d.id===$('location-district').value),towns=selected?.towns||[];
+ $('location-town').replaceChildren(new Option(selected?'읍·면·동 전체':'시·군·구를 먼저 선택하세요',''),...towns.map(t=>new Option(t.name,t.id)));$('location-town').value=towns.some(t=>t.id===town)?town:'';$('location-town').disabled=!selected;
 }
-function resetGeo(){for(const id of ['location-area','location-district','location-town'])$(id).value='';updateLocationControls();}
+function resetGeo(){for(const id of ['location-province','location-district','location-town'])$(id).value='';updateLocationControls();}
 function renderMajors(){
  const term=$('major-search').value.trim();const visible=catalog.filter(m=>[m.name,m.group,...m.subs].some(x=>x.includes(term)));
  $('major-list').replaceChildren(...visible.map(m=>{const b=el('button',undefined,'major-btn'+(selected?.id===m.id?' active':''));b.type='button';b.setAttribute('aria-pressed',String(selected?.id===m.id));b.append(el('strong',m.name),el('span',m.group));b.onclick=()=>selectMajor(m);return b;}));
@@ -79,7 +81,7 @@ async function chooseDepartment(departmentId){
  }catch{if(id===profileRequest)$('department-hint').textContent='학과를 선택하지 못했어요. 다시 선택해 주세요.';}
 }
 function showDetail(job){
- const box=$('detail-body');box.replaceChildren(el('span',$('demo').checked?'DEMO · 가상 공고':'JOB-ALIO · BUSAN CAREER','section-kicker'),el('h2',job.title),el('p',job.agency));
+ const box=$('detail-body');box.replaceChildren(el('span',$('demo').checked?'DEMO · 가상 공고':'JOB-ALIO · KOREA CAREER','section-kicker'),el('h2',job.title),el('p',job.agency));
  const grid=el('div',undefined,'detail-grid');for(const [label,value] of [['채용분야',job.field],['근무형태',job.type],['경력 조건',job.experience],['분류된 고용 형태',job.employment?.join(' · ')],['근무지역',job.workAddress||job.region],['급여',job.salary],['등록일',job.registered],['지역 정보',job.location?.detail],['접수방법',job.method],['접수시작',job.start],['접수마감',job.end]])grid.append(el('div',`${label}  ·  ${value||'기관 안내 확인'}`));box.append(grid,el('h3','공고 상세'),el('p',job.content||'제공된 상세 내용이 없습니다. 기관 공고를 확인해 주세요.','detail-content'),el('h3','내 전공과 연결된 이유'),el('p',`공고의 제목·채용분야·지원 자격에서 ${job.match.words.join(', ')} 키워드가 발견됐어요. 지원 자격과 필수 전공은 공고 원문에서 별도로 확인하세요.`));
  if(!$('demo').checked){const a=el('a',job.sourceUrl?'잡알리오 공고 원문 보기 ↗':'잡알리오에서 공고명 검색 ↗','detail-source');a.href=job.sourceUrl||source;a.target='_blank';a.rel='noopener noreferrer';box.append(a,el('p','출처: 잡알리오 공공기관 채용정보 · 상세 지원 자격과 접수 상태는 원문을 확인하세요.','small-muted'));}
  $('detail').showModal();
@@ -106,16 +108,16 @@ function showJobFeedback(data,demo){
  }
  if(demo){$('coverage').textContent='화면 체험용 가상 데이터입니다. 실제 지원에 사용할 수 없습니다.';return;}
  if(data.source==='alio'){
-  $('coverage').textContent=`출처: 잡알리오 · 부산 근무 공고 ${data.total}건 중 응답 ${data.scanned}건 / 중복 제거 ${data.unique}건 확인 · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 일부 범위 조회이며 전체 검색 결과가 아닙니다.':''} · 구·동 정보가 없는 공고는 상세 지역을 추정하지 않습니다.`;return;
+  $('coverage').textContent=`출처: 잡알리오 · ${data.regionScope||'전국'} 조회 공고 ${data.total}건 중 응답 ${data.scanned}건 / 중복 제거 ${data.unique}건 확인 · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 일부 범위 조회이며 전체 검색 결과가 아닙니다.':''} · 구·동 정보가 없는 공고는 상세 지역을 추정하지 않습니다.`;return;
  }
  const latest=health?.latestDeadline?` · 제공된 마감일 중 가장 최근: ${health.latestDeadline}`:'';
- $('coverage').textContent=`API 전체 ${data.total.toLocaleString()}건 중 응답 ${data.scanned.toLocaleString()}건 확인 · 중복 제거 ${data.unique??data.scanned}건${health?` · 마감일 미제공 ${health.missingDeadline}건 · 부산 근무 여부 미확인 ${health.missingLocation}건`:''}${latest} · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 일부 범위 조회':''}${data.repeatedPage?' · 제공처가 같은 페이지를 반복 반환해 추가 조회를 중단했습니다.':''}`;
+ $('coverage').textContent=`API 전체 ${data.total.toLocaleString()}건 중 응답 ${data.scanned.toLocaleString()}건 확인 · 중복 제거 ${data.unique??data.scanned}건${health?` · 마감일 미제공 ${health.missingDeadline}건 · 국내 근무지역 미확인 ${health.missingLocation}건`:''}${latest} · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 일부 범위 조회':''}${data.repeatedPage?' · 제공처가 같은 페이지를 반복 반환해 추가 조회를 중단했습니다.':''}`;
 }
 async function loadJobs(){
  if(!selected)return;const id=++requestId;controller?.abort();controller=new AbortController();$('refresh').disabled=true;currentJobs=[];$('count').textContent='…';$('jobs').replaceChildren();$('coverage').textContent='';message('전공과 연결된 공고를 찾고 있어요…');
  const demo=$('demo').checked;$('mode-label').textContent=demo?'● 예시 데이터 · 실제 채용공고가 아닙니다':'● 잡알리오 · 공공기관 채용';
  if(!selected.roles.length){$('count').textContent='0';message('이 학과의 직무 연결은 검토 중입니다. 가까운 관심 분야를 선택해 탐색해 보세요.');$('refresh').disabled=false;return;}
- const params=new URLSearchParams({major:selected.id,department:selectedDepartment,sub:selectedDepartment?'':$('sub-major').value,role:selectedRole,q:$('keyword').value,open:$('open-only').checked?'1':'0',demo:demo?'1':'0',area:$('location-area').value,district:$('location-district').value,town:$('location-town').value,includeUnknownLocation:$('unknown-location').checked?'1':'0'});
+ const params=new URLSearchParams({major:selected.id,department:selectedDepartment,sub:selectedDepartment?'':$('sub-major').value,role:selectedRole,q:$('keyword').value,open:$('open-only').checked?'1':'0',demo:demo?'1':'0',province:$('location-province').value,district:$('location-district').value,town:$('location-town').value,includeUnknownLocation:$('unknown-location').checked?'1':'0'});
  for(const name of ['experience','employment'])document.querySelectorAll(`input[name="${name}"]:checked`).forEach(input=>params.append(name,input.value));
  try{const response=await fetch('/api/jobs?'+params,{signal:controller.signal});const data=await response.json();if(id!==requestId)return;if(!response.ok)throw new Error(data.error||'조회하지 못했습니다.');currentJobs=data.jobs;if(data.facets){filterData=data.facets;updateLocationControls();}$('count').textContent=String(currentJobs.length);renderJobs(currentJobs);showJobFeedback(data,demo);}
  catch(error){if(error.name!=='AbortError'&&id===requestId){$('count').textContent='0';message(error.message,true);}}
@@ -124,9 +126,9 @@ async function loadJobs(){
 $('major-search').addEventListener('input',renderMajors);
 $('university-load').addEventListener('click',loadUniversity);
 for(const name of ['university-school','university-year'])$(name).addEventListener('change',()=>{universityRequest++;$('university-load').disabled=!universityConfigured;$('university-info').replaceChildren();$('university-status').textContent='변경한 조건으로 공식 정보를 다시 불러오세요.';});
-$('location-area').addEventListener('change',()=>{$('location-district').value='';$('location-town').value='';updateLocationControls();loadJobs();});
+$('location-province').addEventListener('change',()=>{$('location-district').value='';$('location-town').value='';updateLocationControls();loadJobs();});
 $('location-district').addEventListener('change',()=>{$('location-town').value='';updateLocationControls();loadJobs();});
-$('demo').addEventListener('change',()=>{filterData.areas.forEach(a=>a.districts.forEach(d=>d.towns=[]));resetGeo();loadJobs();});
+$('demo').addEventListener('change',()=>{resetGeo();loadJobs();});
 document.querySelectorAll('input[name="experience"], input[name="employment"]').forEach(input=>input.addEventListener('change',loadJobs));
 $('reset-filters').onclick=()=>{resetGeo();$('unknown-location').checked=false;$('keyword').value='';$('open-only').checked=true;document.querySelectorAll('input[name="experience"], input[name="employment"]').forEach(input=>input.checked=false);loadJobs();};
 let departmentTimer;for(const id of ['department-query','department-school'])$(id).addEventListener('input',()=>{clearTimeout(departmentTimer);departmentTimer=setTimeout(findDepartments,200);});
@@ -140,7 +142,7 @@ async function init(){
  let data;
  try{const response=await fetch('/api/catalog',{cache:'no-store'});if(!response.ok)throw new Error();data=await response.json();if(!Array.isArray(data.majors)||!data.majors.length)throw new Error();}
  catch{message('설정을 불러오지 못했어요. 서버 실행 상태를 확인하고 페이지를 새로고침해 주세요.',true);return;}
- try{catalog=data.majors;universityConfigured=!!data.universityConfigured;filterData=data.filters||{areas:[]};updateLocationControls();$('demo').checked=!data.configured;$('setup-note').hidden=data.configured;selectMajor(catalog[0]);}
+ try{catalog=data.majors;universityConfigured=!!data.universityConfigured;filterData=data.filters||{provinces:[]};updateLocationControls();$('demo').checked=!data.configured;$('setup-note').hidden=data.configured;selectMajor(catalog[0]);}
  catch{message('화면을 초기화하지 못했어요. 페이지를 새로고침해 최신 화면을 불러와 주세요.',true);}
 }
 init();

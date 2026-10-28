@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {clean,dateOnly} from './catalog.mjs';
+import {provinces} from './regions.mjs';
 
 export const alioSource='https://job.alio.go.kr/recruit.do';
 const endpoint='https://apis.data.go.kr/1051000/recruitment/list';
@@ -32,15 +33,18 @@ export function parseAlio(data,key=''){
  if(total>0&&!jobs.length)throw new AlioError('잡알리오 채용공고 목록이 비어 있습니다. 잠시 후 다시 조회해 주세요.');
  return {jobs,total};
 }
-let cached=null,pending=null;
-export async function loadAlio(fetchImpl=globalThis.fetch){
+const cached=new Map(),pending=new Map();
+const alioRegions={'11':'R3010','12':'R3027','26':'R3014','27':'R3013','28':'R3011','30':'R3012','31':'R3016','36':'R3026','41':'R3017','43':'R3020','44':'R3019','47':'R3021','48':'R3022','50':'R3025','51':'R3018','52':'R3024'};
+export async function loadAlio(province='',fetchImpl=globalThis.fetch){
+ if(province&&!provinces.some(p=>p.id===province))throw new AlioError('시·도를 다시 선택해 주세요.',400);
  const key=alioKey();if(!key)throw new AlioError('잡알리오 API 키를 Vercel의 BUSAN_API_KEY 또는 로컬 .env에 등록해 주세요.',503);
- const identity=createHash('sha256').update(key).digest('hex');
- if(cached?.identity===identity&&Date.now()-cached.time<300000)return cached;
- if(pending?.identity===identity)return pending.promise;
+ const identity=createHash('sha256').update(key).digest('hex')+'|'+province,existing=cached.get(identity);
+ if(existing&&Date.now()-existing.time<300000)return existing;
+ if(pending.has(identity))return pending.get(identity);
  const promise=(async()=>{
   async function page(pageNo){
-   const url=new URL(endpoint);url.search=new URLSearchParams({serviceKey:key,pageNo:String(pageNo),numOfRows:'100',workRgnLst:'R3014'});
+   const url=new URL(endpoint);url.search=new URLSearchParams({serviceKey:key,pageNo:String(pageNo),numOfRows:'100'});
+   if(province)url.searchParams.set('workRgnLst',alioRegions[province]);
    let text;try{const response=await fetchImpl(url,{headers:{Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(12000)});if(!response.ok)throw new Error();text=await response.text();}catch{throw new AlioError('잡알리오 API에 연결하지 못했습니다. 잠시 후 다시 조회해 주세요.');}
    if(text.length>8000000)throw new AlioError('잡알리오 응답이 너무 큽니다. 잠시 후 다시 조회해 주세요.');
    let parsed;try{parsed=JSON.parse(text);}catch{throw new AlioError('잡알리오에서 JSON 응답을 받지 못했습니다. API 활용신청 승인과 Vercel BUSAN_API_KEY를 확인해 주세요.');}
@@ -51,6 +55,7 @@ export async function loadAlio(fetchImpl=globalThis.fetch){
   for(let next=2;next<=pageCount;next+=2)batches.push(...await Promise.all([next,next+1].filter(p=>p<=pageCount).map(page)));
   const unique=new Map();for(const batch of batches)for(const job of batch.jobs)unique.set(job.id||JSON.stringify([job.title,job.agency,job.start,job.end]),job);
   const jobs=[...unique.values()],scanned=batches.reduce((n,b)=>n+b.jobs.length,0);
-  cached={identity,jobs,total:first.total,scanned,partial:jobs.length<first.total,time:Date.now(),source:'alio',sourceLabel:'잡알리오 · 공공기관 채용',sourceUrl:alioSource};return cached;
- })();pending={identity,promise};try{return await promise;}finally{if(pending?.promise===promise)pending=null;}
+  const result={jobs,total:first.total,scanned,partial:jobs.length<first.total,time:Date.now(),regionScope:province?provinces.find(p=>p.id===province).name:'전국',source:'alio',sourceLabel:'잡알리오 · 공공기관 채용',sourceUrl:alioSource};
+  if(cached.size>=24)cached.delete(cached.keys().next().value);cached.set(identity,result);return result;
+ })();pending.set(identity,promise);try{return await promise;}finally{pending.delete(identity);}
 }
