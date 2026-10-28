@@ -6,6 +6,7 @@ import {majors,relatedWords,matching,normalize,demoJobs} from './catalog.mjs';
 import {searchDepartments,getDepartment,departmentMetadata} from './departments.mjs';
 import {locationCatalog,annotateJob,validateFilters,passesFilters} from './job-filters.mjs';
 import {universityDetails,UniversityError} from './school-major-api.mjs';
+import {jobStatus,sourceHealth} from './job-health.mjs';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 if(existsSync(path.join(root,'.env'))) process.loadEnvFile(path.join(root,'.env'));
@@ -29,19 +30,22 @@ async function loadLive(){
  if(cache&&Date.now()-cache.time<300000)return cache;
  if(pending)return pending;
  pending=(async()=>{
-  let jobs=[],total=0,scanned=0;
+  let jobs=[],total=0,scanned=0;const seenPages=new Set();let repeatedPage=false;
   // One bounded refresh; parallel requests are coalesced and cached for five minutes.
-  for(let page=1;page<=10;page++){
-   const url=new URL(endpoint);url.search=new URLSearchParams({ServiceKey:key,pageNo:String(page),numOfRows:'100',resultType:'json'});
+  for(let page=1;page<=3;page++){
+   const url=new URL(endpoint);url.search=new URLSearchParams({ServiceKey:key,pageNo:String(page),numOfRows:'1000',resultType:'json'});
    const res=await fetch(url,{signal:AbortSignal.timeout(12000),redirect:'error'});
    if(!res.ok)throw new PublicError('공공 API에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
    const raw=await res.text();if(raw.length>8000000)throw new PublicError('공공 API 응답이 너무 큽니다. 잠시 후 다시 시도해 주세요.');
    let parsed;try{parsed=JSON.parse(raw);}catch{throw new PublicError('인증 승인 상태를 확인해 주세요. 공공 API에서 JSON 응답을 받지 못했습니다.');}
-   const batch=parseResponse(parsed,key);total=batch.total;scanned+=batch.jobs.length;jobs.push(...batch.jobs);
+   const batch=parseResponse(parsed,key);total=batch.total;scanned+=batch.jobs.length;
+   const fingerprint=JSON.stringify(batch.jobs);
+   if(seenPages.has(fingerprint)){repeatedPage=true;break;}
+   seenPages.add(fingerprint);jobs.push(...batch.jobs);
    if(scanned>=total||!batch.jobs.length)break;
   }
   const unique=new Map();for(const j of jobs)unique.set(JSON.stringify([j.title,j.agency,j.start,j.end,j.field]),j);
-  cache={jobs:[...unique.values()],total,scanned,time:Date.now()};return cache;
+  cache={jobs:[...unique.values()],total,scanned,repeatedPage,time:Date.now()};return cache;
  })();
  try{return await pending;}finally{pending=null;}
 }
@@ -77,11 +81,13 @@ export async function handler(req,res){
    const words=relatedWords(major,sub,role);const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const q=(url.searchParams.get('q')||'').trim().slice(0,100),type=url.searchParams.get('type')||'';
    const annotated=data.jobs.map(annotateJob),facets=locationCatalog(annotated);
-   let jobs=annotated.map(j=>({...j,match:matching(j,words),status:!j.end?'일정 확인':j.end<today?'마감':j.start&&j.start>today?'접수 예정':'접수 중'}));
-   jobs=jobs.filter(j=>j.match.score>0&&(!q||`${j.title} ${j.agency} ${j.content}`.includes(q))&&(!type||j.type.includes(type))&&(url.searchParams.get('open')!=='1'||j.status==='접수 중'));
+   let jobs=annotated.map(j=>({...j,match:matching(j,words),status:jobStatus(j,today)}));
+   jobs=jobs.filter(j=>j.match.score>0&&(!q||`${j.title} ${j.agency} ${j.content}`.includes(q))&&(!type||j.type.includes(type)));
    jobs=jobs.filter(j=>passesFilters(j,url.searchParams));
+   const matchedBeforeOpen=jobs.length;
+   if(url.searchParams.get('open')==='1')jobs=jobs.filter(j=>j.status==='접수 중');
    jobs.sort((a,b)=>b.match.score-a.match.score||(a.end||'9999').localeCompare(b.end||'9999'));
-   return send(res,200,{jobs,facets,mode:demo?'demo':'live',total:data.total,scanned:data.scanned,partial:data.scanned<data.total,updatedAt:new Date(data.time).toISOString(),words});
+   return send(res,200,{jobs,facets,mode:demo?'demo':'live',total:data.total,scanned:data.scanned,unique:data.jobs.length,partial:!!data.repeatedPage||data.scanned<data.total,repeatedPage:!!data.repeatedPage,health:demo?null:sourceHealth(data.jobs,today),matchedBeforeOpen,updatedAt:new Date(data.time).toISOString(),words});
   }
   const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css'};
   if(!files[url.pathname])return send(res,404,{error:'페이지를 찾을 수 없습니다.'});

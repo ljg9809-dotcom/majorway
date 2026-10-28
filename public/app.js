@@ -91,13 +91,30 @@ function renderJobs(jobs){
   card.append(top,el('h3',j.title||'제목 미제공'),el('div',`${j.region||'지역 미제공'}  ·  ${j.type||'근무형태 확인'}  ·  ${j.end?j.end+' 마감':'일정 확인 필요'}`,'job-meta'),el('div',`경력: ${j.experience} · 고용: ${j.employment.join(' · ')} · ${j.location.detail}`,'job-meta'),bottom);return card;
  }));
 }
+function showJobFeedback(data,demo){
+ const empty=!data.jobs.length,health=data.health;
+ let text=empty?'조건에 맞는 공고가 없습니다. 직무·지역·경력 조건을 넓혀 보세요.':'';
+ if(!demo&&health?.warning)text=health.warning;
+ else if(empty&&$('open-only').checked&&data.matchedBeforeOpen>0)text='관련 공고는 있지만 접수 중으로 확인된 공고가 없습니다.';
+ message(text);
+ if(empty&&$('open-only').checked&&data.matchedBeforeOpen>0){
+  const button=el('button',`마감·일정 미확인 공고 ${data.matchedBeforeOpen}건 보기`,'detail-button');button.type='button';
+  button.onclick=()=>{$('open-only').checked=false;loadJobs();};$('result-message').append(button);
+ }
+ if(!demo&&(empty||health?.warning)){
+  const link=el('a','공식 부산일자리정보망 최신 공고 확인 ↗','detail-source');link.href='https://busanjob.net/view.do?no=1309';link.target='_blank';link.rel='noopener noreferrer';$('result-message').append(link);
+ }
+ if(demo){$('coverage').textContent='화면 체험용 가상 데이터입니다. 실제 지원에 사용할 수 없습니다.';return;}
+ const latest=health?.latestDeadline?` · 제공된 마감일 중 가장 최근: ${health.latestDeadline}`:'';
+ $('coverage').textContent=`API 전체 ${data.total.toLocaleString()}건 중 응답 ${data.scanned.toLocaleString()}건 확인 · 중복 제거 ${data.unique??data.scanned}건${health?` · 마감일 미제공 ${health.missingDeadline}건 · 부산 근무 여부 미확인 ${health.missingLocation}건`:''}${latest} · ${new Date(data.updatedAt).toLocaleString('ko-KR')} 서버 조회${data.partial?' · 일부 범위 조회':''}${data.repeatedPage?' · 제공처가 같은 페이지를 반복 반환해 추가 조회를 중단했습니다.':''}`;
+}
 async function loadJobs(){
  if(!selected)return;const id=++requestId;controller?.abort();controller=new AbortController();$('refresh').disabled=true;currentJobs=[];$('count').textContent='…';$('jobs').replaceChildren();$('coverage').textContent='';message('전공과 연결된 공고를 찾고 있어요…');
  const demo=$('demo').checked;$('mode-label').textContent=demo?'● 예시 데이터 · 실제 채용공고가 아닙니다':'● 부산광역시 공공 API';
  if(!selected.roles.length){$('count').textContent='0';message('이 학과의 직무 연결은 검토 중입니다. 가까운 관심 분야를 선택해 탐색해 보세요.');$('refresh').disabled=false;return;}
  const params=new URLSearchParams({major:selected.id,department:selectedDepartment,sub:selectedDepartment?'':$('sub-major').value,role:selectedRole,q:$('keyword').value,open:$('open-only').checked?'1':'0',demo:demo?'1':'0',area:$('location-area').value,district:$('location-district').value,town:$('location-town').value,includeUnknownLocation:$('unknown-location').checked?'1':'0'});
  for(const name of ['experience','employment'])document.querySelectorAll(`input[name="${name}"]:checked`).forEach(input=>params.append(name,input.value));
- try{const response=await fetch('/api/jobs?'+params,{signal:controller.signal});const data=await response.json();if(id!==requestId)return;if(!response.ok)throw new Error(data.error||'조회하지 못했습니다.');currentJobs=data.jobs;if(data.facets){filterData=data.facets;updateLocationControls();}$('count').textContent=String(currentJobs.length);renderJobs(currentJobs);message(currentJobs.length?'':'조건에 맞는 공고가 없어요. 세부 전공이나 근무 형태를 넓히거나, 접수 중만 필터를 꺼보세요.');$('coverage').textContent=demo?'화면 체험용 가상 데이터입니다. 실제 지원에 사용할 수 없습니다.':`전체 ${data.total.toLocaleString()}건 중 ${data.scanned.toLocaleString()}건 조회 · ${new Date(data.updatedAt).toLocaleTimeString('ko-KR')} 갱신${data.partial?' · 일부 범위에서 검색했습니다. 전체 공고 검색 결과가 아닙니다.':''}`;}
+ try{const response=await fetch('/api/jobs?'+params,{signal:controller.signal});const data=await response.json();if(id!==requestId)return;if(!response.ok)throw new Error(data.error||'조회하지 못했습니다.');currentJobs=data.jobs;if(data.facets){filterData=data.facets;updateLocationControls();}$('count').textContent=String(currentJobs.length);renderJobs(currentJobs);showJobFeedback(data,demo);}
  catch(error){if(error.name!=='AbortError'&&id===requestId){$('count').textContent='0';message(error.message,true);}}
  finally{if(id===requestId)$('refresh').disabled=false;}
 }
