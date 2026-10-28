@@ -24,6 +24,7 @@ test('인증 실패/HTML/외부 엔티티를 거부하고 임의 링크를 제�
  assert.throws(()=>parseWork24Xml('<GO24><error>신청하신 OpenApi 서비스가 존재하지 않습니다 test-work-key</error></GO24>','test-work-key'),e=>e.message.includes('서비스를 찾지 못')&&!e.message.includes('test-work-key'));
  assert.throws(()=>parseWork24Xml('<GO24><error>인증키 오류 test-work-key</error></GO24>','test-work-key'),e=>e.message.includes('인증이 거부')&&!e.message.includes('test-work-key'));
  assert.throws(()=>parseWork24Xml('<GO24><error>일시적인 장애입니다 test-work-key https://example.com/123</error></GO24>','test-work-key'),e=>e.message.includes('일시적인 장애')&&!/test-work-key|example|123/.test(e.message));
+ assert.throws(()=>parseWork24Xml('<GO24><error>개인회원은 사용할 수 없는 API 입니다.</error></GO24>'),e=>e.message.includes('기업회원으로 발급'));
 });
 test('BUSAN_API_KEY 호환, 새 변수 우선, 부산 한정 요청·중복 제거·캐시·비밀 제거',async()=>{
  const previous={BUSAN_API_KEY:process.env.BUSAN_API_KEY,WORK24_API_KEY:process.env.WORK24_API_KEY};

@@ -28,6 +28,7 @@ export function parseWork24Xml(xml,key='',keyword=''){
  // Classify known errors; never forward the arbitrary upstream error text.
  if(/<GO24(?:\s|>)/.test(xml)){
   const error=value(xml,'error');
+  if(/개인회원/.test(error))throw new Work24Error('고용24 채용정보 API는 개인회원 키로 사용할 수 없습니다. 기업회원으로 발급받은 채용정보 API 키를 Vercel BUSAN_API_KEY에 등록해 주세요.');
   if(/신청하신.*서비스가 존재하지/.test(error))throw new Work24Error('고용24가 신청한 OpenAPI 서비스를 찾지 못했습니다. 채용정보 API 승인 상태와 Vercel BUSAN_API_KEY에 입력한 고용24 키를 확인해 주세요.');
   if(/인증|키|승인|권한/.test(error))throw new Work24Error('고용24 인증이 거부되었습니다. 채용정보 API 승인 상태와 Vercel BUSAN_API_KEY 값을 확인해 주세요.');
   // Only a short Korean explanation may leave the server: strip keys, URLs,
