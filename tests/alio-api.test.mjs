@@ -15,6 +15,7 @@ test('잡알리오 공식 필드·코드·기간·부산 근무지와 원문 링
 });
 test('정상 JSON·래핑된 항목·빈 결과와 인증 실패 비노출',()=>{
  assert.equal(parseAlio({resultCode:0,totalCount:1,result:[row]}).jobs.length,1);
+ assert.equal(parseAlio({resultCode:200,totalCount:1,result:[row]}).jobs.length,1);
  assert.equal(parseAlio({resultCode:'00',totalCount:1,result:[{item:row}]}).jobs[0].agency,'테스트 기관');
  assert.deepEqual(parseAlio({resultCode:0,totalCount:0,result:[]}).jobs,[]);
  for(const data of [{resultCode:30,resultMsg:'secret+test'},{resultCode:0,totalCount:1,result:[]},{resultCode:0,totalCount:'bad',result:[]}])assert.throws(()=>parseAlio(data,'secret+test'),e=>!e.message.includes('secret+test'));

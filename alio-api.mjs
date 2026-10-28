@@ -19,7 +19,10 @@ export function normalizeAlio(row,key=''){
 }
 export function parseAlio(data,key=''){
  if(!data||typeof data!=='object'||Array.isArray(data))throw new AlioError('잡알리오 응답 형식을 확인하지 못했습니다.');
- if(!['0','00','0000'].includes(String(data.resultCode)))throw new AlioError('잡알리오 API 인증 또는 이용 상태를 확인해 주세요. 해당 API 활용신청 승인과 Vercel BUSAN_API_KEY 값을 확인해 주세요.');
+ if(!['0','00','0000','200'].includes(String(data.resultCode))){
+  const code=/^\d{1,3}$/.test(String(data.resultCode))?` (응답 코드 ${data.resultCode})`:'';
+  throw new AlioError(`잡알리오 API 인증 또는 이용 상태를 확인해 주세요${code}. 해당 API 활용신청 승인과 Vercel BUSAN_API_KEY 값을 확인해 주세요.`);
+ }
  const total=Number(data.totalCount);if(!/^\d+$/.test(String(data.totalCount))||!Number.isSafeInteger(total))throw new AlioError('잡알리오 전체 공고 건수를 확인하지 못했습니다.');
  let rows=data.result;
  if(rows&&typeof rows==='object'&&!Array.isArray(rows))rows=rows.item;
