@@ -21,6 +21,8 @@ test('인증 실패/HTML/외부 엔티티를 거부하고 임의 링크를 제�
  for(const body of ['<error>test-work-key</error>','<html>login</html>','<!DOCTYPE foo><wantedRoot><total>0</total></wantedRoot>','<wantedRoot><message>test-work-key</message></wantedRoot>','<wantedRoot><total>1</total></wantedRoot>'])assert.throws(()=>parseWork24Xml(body,'test-work-key'),e=>!e.message.includes('test-work-key'));
  assert.deepEqual(parseWork24Xml('<wantedRoot><total>0</total></wantedRoot>').jobs,[]);
  assert.equal(safeWork24Url('https://evil.example/?authKey=test'),'');assert.equal(safeWork24Url('javascript:alert(1)'),'');assert.equal(safeWork24Url('https://work24.go.kr.evil.example/'),'');
+ assert.throws(()=>parseWork24Xml('<GO24><error>신청하신 OpenApi 서비스가 존재하지 않습니다 test-work-key</error></GO24>','test-work-key'),e=>e.message.includes('서비스를 찾지 못')&&!e.message.includes('test-work-key'));
+ assert.throws(()=>parseWork24Xml('<GO24><error>인증키 오류 test-work-key</error></GO24>','test-work-key'),e=>e.message.includes('인증이 거부')&&!e.message.includes('test-work-key'));
 });
 test('BUSAN_API_KEY 호환, 새 변수 우선, 부산 한정 요청·중복 제거·캐시·비밀 제거',async()=>{
  const previous={BUSAN_API_KEY:process.env.BUSAN_API_KEY,WORK24_API_KEY:process.env.WORK24_API_KEY};

@@ -23,7 +23,16 @@ export function safeWork24Url(text,key=''){
  }catch{return '';}
 }
 export function parseWork24Xml(xml,key='',keyword=''){
- if(typeof xml!=='string'||xml.length>8000000||/<!DOCTYPE|<!ENTITY/i.test(xml)||!/<wantedRoot(?:\s|>)/.test(xml))throw new Work24Error('고용24 응답을 확인하지 못했습니다. 채용정보 API 승인 상태를 확인해 주세요.');
+ if(typeof xml!=='string'||xml.length>8000000||/<!DOCTYPE|<!ENTITY/i.test(xml))throw new Work24Error('고용24 응답을 확인하지 못했습니다. 채용정보 API 승인 상태를 확인해 주세요.');
+ // Work24 sends service/authentication failures in a separate GO24 envelope.
+ // Classify known errors; never forward the arbitrary upstream error text.
+ if(/<GO24(?:\s|>)/.test(xml)){
+  const error=value(xml,'error');
+  if(/신청하신.*서비스가 존재하지/.test(error))throw new Work24Error('고용24가 신청한 OpenAPI 서비스를 찾지 못했습니다. 채용정보 API 승인 상태와 Vercel BUSAN_API_KEY에 입력한 고용24 키를 확인해 주세요.');
+  if(/인증|키|승인|권한/.test(error))throw new Work24Error('고용24 인증이 거부되었습니다. 채용정보 API 승인 상태와 Vercel BUSAN_API_KEY 값을 확인해 주세요.');
+  throw new Work24Error('고용24가 API 오류를 반환했습니다. 이용 승인 상태를 확인한 뒤 다시 조회해 주세요.');
+ }
+ if(!/<wantedRoot(?:\s|>)/.test(xml))throw new Work24Error('고용24 채용정보 형식의 응답을 받지 못했습니다. 채용정보 API 승인 상태를 확인해 주세요.');
  if(/<(?:error|message|errorMsg|resultMsg)(?:\s|>)/.test(xml)&&!/<wanted(?:\s|>)/.test(xml)&&!/^(?:0|00)$/.test(value(xml,'resultCode')))throw new Work24Error('고용24 인증 또는 이용 상태를 확인해 주세요. Vercel의 BUSAN_API_KEY에는 고용24에서 발급한 키가 필요합니다.');
  const totalText=value(xml,'total').trim(),total=Number(totalText);
  if(!/^\d+$/.test(totalText)||!Number.isSafeInteger(total))throw new Work24Error('고용24 채용정보 건수를 확인하지 못했습니다. 인증 승인 상태를 확인해 주세요.');
