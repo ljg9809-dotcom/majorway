@@ -5,5 +5,5 @@ tests/
 data/academy-2026-source.json.gz
 *.ps1
 README.md
-index.html
+/index.html
 scripts/check-staged-secrets.mjs

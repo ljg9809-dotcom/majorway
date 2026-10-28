@@ -15,6 +15,8 @@ test('GitHub Pages는 실제 서비스로 이동하고 Vercel 정적 출력에�
  assert.ok(output.includes('department-finder'));assert.ok(!output.includes('http-equiv="refresh"'));
  const config=JSON.parse(fs.readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
  assert.equal(config.outputDirectory,'dist');assert.equal(config.rewrites[0].destination,'/api/index');
+ const ignored=fs.readFileSync(new URL('../.vercelignore',import.meta.url),'utf8').split(/\r?\n/);
+ assert.ok(ignored.includes('/index.html'));assert.ok(!ignored.includes('index.html'));
 });
 test('Vercel 함수는 포트를 열지 않고 동일한 서버 API를 처리',async()=>{
  assert.equal(server.listening,false);
